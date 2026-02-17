@@ -235,6 +235,8 @@ thead th.sticky-id-cell {
         fetchData(currentTableName);
     }
 
+    function logout(){localStorage.clear();window.location.href='index.html'}  
+    
     // 3. GESTIÓN DE VISTA (Mobile/Desktop)
     function adjustLayoutForOrientation() {
         const container = document.getElementById('app-container');
@@ -538,3 +540,4 @@ function getFriendlyName(techName) {
 </script>
 </body>
 </html>
+
