@@ -235,8 +235,8 @@ thead th.sticky-id-cell {
         fetchData(currentTableName);
     }
 
-    function logout(){localStorage.clear();window.location.href='index.html'}  
-    
+function logout(){localStorage.clear();window.location.href='index.html'}  
+
     // 3. GESTIÓN DE VISTA (Mobile/Desktop)
     function adjustLayoutForOrientation() {
         const container = document.getElementById('app-container');
@@ -270,33 +270,57 @@ thead th.sticky-id-cell {
     window.addEventListener('resize', adjustLayoutForOrientation);
 
     // 4. FORMATEO DE DATOS (QUÍMICA)
-    function getFormattedValue(key, value) {
-        if (value === null || value === undefined || value === '') return '';        
-        const cleanKey = String(key).toUpperCase(), stringValue = String(value).trim();
+function getFormattedValue(key, value) {
+    // 1. Manejo de nulos o vacíos
+    if (value === null || value === undefined || value === '') return '';        
+    
+    const cleanKey = String(key).toUpperCase();
+    let stringValue = String(value).trim();
 
-        // Configuración Electrónica con Superíndices
-        if (cleanKey.includes('CONFIG')) {
-            return stringValue.replace(/([spdf])(\d+)/g, '$1<sup>$2</sup>');
-        }
+    // 2. Si el valor es un guion o similar pero queremos que sea numérico, 
+    // lo convertimos a "0" para que el formateador lo procese.
+    if (stringValue === '-') stringValue = '0';
 
-        // Estados de Oxidación (Texto Puro)
-        if (cleanKey.substring(5, 7) === 'EO') return stringValue;
-
-        // Tratamiento Numérico
-        const numValue = parseFloat(stringValue.replace(',', '.'));
-        if (!isNaN(numValue) && isFinite(numValue)) {
-            const formatOptions = { useGrouping: true, style: 'decimal' };
-            
-            if (cleanKey.includes('MASA')) {
-                return new Intl.NumberFormat('es-ES', { ...formatOptions, minimumFractionDigits: 2, maximumFractionDigits: 5 }).format(numValue);
-            }
-            if (cleanKey.includes('KJ/MOL') || cleanKey.includes('ELECTRONEG.')) {
-                return new Intl.NumberFormat('es-ES', { ...formatOptions, minimumFractionDigits: cleanKey.includes('KJ/MOL') ? 2 : 0, maximumFractionDigits: 2 }).format(numValue);
-            }
-            return new Intl.NumberFormat('es-ES', { ...formatOptions, minimumFractionDigits: 0, maximumFractionDigits: 4 }).format(numValue);
-        }
-        return value;
+    // 3. EXCEPCIONES DE TEXTO (Configuración y EO)
+    if (cleanKey.includes('CONFIG')) {
+        return stringValue.replace(/([spdf])(\d+)/g, '$1<sup>$2</sup>');
     }
+    if (cleanKey.substring(5, 7) === 'EO') return stringValue;
+
+    // 4. TRATAMIENTO NUMÉRICO
+    const numValue = parseFloat(stringValue.replace(',', '.'));
+    
+    // IMPORTANTE: !isNaN(numValue) incluirá al 0
+    if (!isNaN(numValue) && isFinite(numValue)) {
+        const formatOptions = { useGrouping: true, style: 'decimal' };
+        
+        if (cleanKey.includes('MASA')) {
+            return new Intl.NumberFormat('es-ES', { 
+                ...formatOptions, 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 5 
+            }).format(numValue);
+        }
+
+        if (cleanKey.includes('KJ/MOL') || cleanKey.includes('ELECTRONEG.')) {
+            return new Intl.NumberFormat('es-ES', { 
+                ...formatOptions, 
+                minimumFractionDigits: 2, // Forzamos 2 decimales mínimos (0,00)
+                maximumFractionDigits: 2 
+            }).format(numValue);
+        }
+
+        // Formato estándar (ej. Radio atómico, etc.)
+        // Si quieres que el 0 general también tenga decimales, cambia minimum a 2
+        return new Intl.NumberFormat('es-ES', { 
+            ...formatOptions, 
+            minimumFractionDigits: (numValue === 0 ? 2 : 0), 
+            maximumFractionDigits: 4 
+        }).format(numValue);
+    }
+
+    return value;
+}
 
     // 5. FETCH Y CARGA DE TABLAS
     async function fetchData(tableName) {
@@ -407,23 +431,23 @@ thead th.sticky-id-cell {
         
         content.innerHTML = '';
         
-title.innerHTML = `
-    <div class="flex items-baseline gap-3">
-        <span class="text-blue-400 text-2xl font-bold">
-            ${row[tablePrefix + 'NOMBRE'] || 'Detalle'}
-        </span>
-        
-        ${row[tablePrefix + 'SIMBOLO'] ? `
-            <div class="flex items-baseline">
-                <span class="text-gray-500 text-3xl font-light">[</span>
-                <span class="text-emerald-400 text-3xl font-black tracking-widest">
-                    ${row[tablePrefix + 'SIMBOLO']}
+        title.innerHTML = `
+            <div class="flex items-baseline gap-3">
+                <span class="text-blue-400 text-2xl font-bold">
+                    ${row[tablePrefix + 'NOMBRE'] || 'Detalle'}
                 </span>
-                <span class="text-gray-500 text-3xl font-light text-baseline">]</span>
+                
+                ${row[tablePrefix + 'SIMBOLO'] ? `
+                    <div class="flex items-baseline">
+                        <span class="text-gray-500 text-3xl font-light">[</span>
+                        <span class="text-emerald-400 text-3xl font-black tracking-widest">
+                            ${row[tablePrefix + 'SIMBOLO']}
+                        </span>
+                        <span class="text-gray-500 text-3xl font-light text-baseline">]</span>
+                    </div>
+                ` : ''}
             </div>
-        ` : ''}
-    </div>
-`;
+        `;
 
         Object.keys(row).forEach(key => {
             const cleanKey = key.toUpperCase();
@@ -433,7 +457,7 @@ title.innerHTML = `
             if (String(cfg.visible).toLowerCase() !== 'x') return;
 
             const item = document.createElement('div');
-            item.className = 'grid grid-cols-[225px_1fr] gap-8 py- border-b border-gray-800/50 last:border-0 hover:bg-white/5 px-2';
+            item.className = 'grid grid-cols-[180px_1fr] gap-6 py- border-b border-gray-800/50 last:border-0 hover:bg-white/5 px-2';
             item.innerHTML = `
                 <span class="text-gray-500 font-medium uppercase text-[10px] self-center">${cfg.label || key}</span>
                 <span class="text-gray-100 font-bold text-sm ${cleanKey.includes('CONFIG') ? 'normal-case' : 'uppercase'}">
@@ -540,5 +564,3 @@ function getFriendlyName(techName) {
 </script>
 </body>
 </html>
-
-
